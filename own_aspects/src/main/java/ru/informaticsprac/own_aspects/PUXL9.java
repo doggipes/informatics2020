@@ -12,7 +12,7 @@ public class PUXL9 {
     }
 
     @MyTransaction
-    public String test2(String uuid){
-        return uuid;
+    public int test2(String uuid, int first, int second){
+        return first + second;
     }
 }

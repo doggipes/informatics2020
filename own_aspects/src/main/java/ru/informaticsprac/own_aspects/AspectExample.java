@@ -1,10 +1,12 @@
 package ru.informaticsprac.own_aspects;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.stereotype.Component;
@@ -18,40 +20,37 @@ public class AspectExample {
     @Autowired
     MethodRepository methodRepository;
 
-    @Pointcut("@annotation(MyTransaction)")
-    public void callMyTransaction(){}
+    @Pointcut("@annotation(MyTransaction) && args(uuid, ..)")
+    public void callMyTransaction(String uuid){}
 
-    @Around(value = "callMyTransaction()")
-    public Object aroundCallMyTransaction(ProceedingJoinPoint joinPoint) throws Throwable {
+    @Around(value = "callMyTransaction(uuid)")
+    public Object aroundCallMyTransaction(ProceedingJoinPoint joinPoint, String uuid) throws Throwable {
         Object[] args = joinPoint.getArgs();
-        Optional<Method> method_by_uuid = methodRepository.findEntityByUuid(args[0].toString());
-        Optional<Method> method_by_name = methodRepository.findEntityByName(joinPoint.getSignature().getName());
+        ObjectMapper objectMapper = new ObjectMapper();
+        StringBuilder parameters = new StringBuilder();
+        for (Object arg: args) {
+            parameters.append(objectMapper.writeValueAsString(arg)).append(",");
+        }
+        parameters.deleteCharAt(parameters.length() - 1);
 
-        if(!method_by_name.isPresent()) {
-            if (!method_by_uuid.isPresent()) {
+        Optional<Method> method_by_uuid = methodRepository.findEntityByUuidAndParametersAndName(uuid, parameters.toString(), joinPoint.getSignature().toString());
+
+            if (method_by_uuid.isPresent()) {
+                if(method_by_uuid.get().getParameters().equals(parameters.toString()) && method_by_uuid.get().getName().equals(joinPoint.getSignature().toString())){
+                    System.out.println("Достали");
+                    return objectMapper.readValue(method_by_uuid.get().getReturn_object(), ((MethodSignature) joinPoint.getSignature()).getReturnType());
+                }
+            }
+
                 methodRepository.save(Method.builder()
-                        .name(joinPoint.getSignature().getName())
-                        .uuid(args[0].toString())
-                        .return_object(joinPoint.proceed().toString())
+                        .name(joinPoint.getSignature().toString())
+                        .uuid(uuid)
+                        .parameters(parameters.toString())
+                        .return_object(objectMapper.writeValueAsString(joinPoint.proceed()))
                         .build());
+
                 System.out.println("Записался");
                 return joinPoint.proceed();
-            } else {
-                return null;
-            }
-        } else
-        {
-            if(!method_by_uuid.isPresent()){
-                return null;
-            } else {
-                if(method_by_name.get().getUuid().equals(method_by_uuid.get().getUuid())){
-                    Method method = methodRepository.findEntityByUuid(args[0].toString()).get();
-                    System.out.println("Достали");
-                    return method.getReturn_object();
-                } else
-                    return null;
-            }
-        }
     }
 
 }

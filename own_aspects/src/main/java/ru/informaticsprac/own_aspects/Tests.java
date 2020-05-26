@@ -13,6 +13,6 @@ public class Tests implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         System.out.println(puxl9.test("123"));
-        System.out.println(puxl9.test2("123"));
+        System.out.println(puxl9.test2("456", 5000, 51));
     }
 }

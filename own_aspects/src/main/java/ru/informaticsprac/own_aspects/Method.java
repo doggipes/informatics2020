@@ -23,6 +23,8 @@ public class Method {
     private String name;
     @Column(name="uuid_of_method")
     private String uuid;
+    @Column(name = "parameters_of_method")
+    private String parameters;
     @Column(name = "return_of_method")
     private String return_object;
 }
